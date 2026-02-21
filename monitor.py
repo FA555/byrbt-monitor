@@ -48,32 +48,17 @@ def send_notification(title: str, content_lines: list[str]):
     try:
         title_safe = urllib.parse.quote(title)
         body_safe = urllib.parse.quote(chr(10).join(content_lines))
-        response = requests.get(f'{config.BARK_SELF_URL}/{title_safe}/{body_safe}', timeout=5)
-        response.raise_for_status()
+        requests.get(
+            f'{config.BARK_SELF_URL}/{title_safe}/{body_safe}',
+            timeout=5,
+            params={'group': 'BYRBT Monitor', 'icon': config.NOTIFICATION_ICON_URL},
+        ).raise_for_status()
         logging.info('向 Bark 发送通知成功')
     except Exception as e:
         logging.error(f'向 Bark 发送通知时出错：{e}')
 
 
 def push_to_qbittorrent(torrents: Iterable[Torrent]) -> bool:
-    try:
-        qbt_client = qbittorrentapi.Client(config.QBT_URL)
-        qbt_client.auth_log_in()
-
-        download_links = [torrent.get_link() for torrent in torrents]
-        qbt_client.torrents_add(urls=download_links, save_path=config.DOWNLOAD_DIR)
-
-        logging.info(f'推送 {len(torrents)} 个种子到 qBittorrent 成功')
-        return True
-    except Exception as e:
-        logging.error(f'推送种子到 qBittorrent 时出错：{e}')
-        return False
-
-
-def fake_push():
-    torrents = [
-        Torrent(name='[演讲交流][习近平总书记率新任常委与记者见面会][WMV][2012-11-15]', id=107466),
-    ]
     try:
         qbt_client = qbittorrentapi.Client(config.QBT_URL)
         qbt_client.auth_log_in()
