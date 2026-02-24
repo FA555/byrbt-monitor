@@ -58,7 +58,7 @@ def send_notification(title: str, content_lines: list[str]):
         logging.error(f'向 Bark 发送通知时出错：{e}')
 
 
-def push_to_qbittorrent(torrents: Iterable[Torrent]) -> bool:
+def push_to_qbittorrent(torrents: Iterable[Torrent]) -> int | None:
     try:
         qbt_client = qbittorrentapi.Client(config.QBT_URL)
         qbt_client.auth_log_in()
@@ -67,10 +67,11 @@ def push_to_qbittorrent(torrents: Iterable[Torrent]) -> bool:
         qbt_client.torrents_add(urls=download_links, save_path=config.DOWNLOAD_DIR)
 
         logging.info(f'推送 {len(torrents)} 个种子到 qBittorrent 成功')
-        return True
+
+        return len(qbt_client.torrents_info(status_filter='uploading'))
     except Exception as e:
         logging.error(f'推送种子到 qBittorrent 时出错：{e}')
-        return False
+        return None
 
 
 def extract_torrent(row: BeautifulSoup) -> Torrent | None:
@@ -111,11 +112,16 @@ def get_bidding_torrents():
         logging.error(f'获取种子列表失败：{e}')
 
 
-def parse_push_results(status: bool, torrents: set[Torrent]) -> Tuple[str, list[str]]:
+def parse_push_results(seeding_count: int | None, torrents: set[Torrent]) -> Tuple[str, list[str]]:
     count = len(torrents)
 
-    title = f'新增种子{"成功" if status else "失败"}'
-    content_lines = [f'共{count}个种子']
+    title = f'新增{count}个种子{"失败" if seeding_count is None else "成功"}'
+    content_lines = []
+    if seeding_count is  None:
+        content_lines.append('请检查qBittorrent状态')
+    else:
+        content_lines.append(f'当前{seeding_count}个种子做种中')
+
     return title, content_lines
 
 
